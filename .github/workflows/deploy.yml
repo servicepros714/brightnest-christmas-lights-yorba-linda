@@ -1,0 +1,45 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # No `cache: npm` — this repo ships without package-lock.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Optional overrides: if these repo secrets are set they win over the committed .env.local.
+      # Empty/unset secrets are skipped so they never blank out .env.local.
+      - name: Write build env from secrets (if set)
+        shell: bash
+        env:
+          PK: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          API: ${{ secrets.VITE_API_BASE }}
+        run: |
+          : > .env.production.local
+          if [ -n "$PK" ]; then echo "VITE_STRIPE_PUBLISHABLE_KEY=$PK" >> .env.production.local; fi
+          if [ -n "$API" ]; then echo "VITE_API_BASE=$API" >> .env.production.local; fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=brightnest-christmas-lights-yorba-linda --branch=main

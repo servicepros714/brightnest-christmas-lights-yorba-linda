@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+*.log
+# .env.local is intentionally committed: it only holds the PUBLIC Stripe publishable key
+# and the public Worker URL. The Stripe SECRET key never goes in this repo — it is a Worker secret.
+.env.*.local
